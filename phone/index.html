@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#12121a">
+<link rel="icon" href="data:,">
+<title>游戏字幕翻译</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 连接页 -->
+<div id="join" class="screen">
+  <div class="join-card">
+    <h1>游戏字幕翻译</h1>
+    <p class="sub">电脑和手机连同一个 WiFi，用电脑上显示的地址打开本页</p>
+
+    <label>中继地址
+      <input id="relay-url" type="text" inputmode="url" placeholder="ws://192.168.1.5:8780">
+    </label>
+    <label>配对码
+      <input id="pair-code" type="text" inputmode="text" maxlength="8" placeholder="电脑上显示的 6 位码">
+    </label>
+    <button id="btn-join" class="primary">连接</button>
+    <p id="join-status" class="status"></p>
+  </div>
+</div>
+
+<!-- 字幕页 -->
+<div id="chat" class="screen hidden">
+  <header>
+    <div class="hdr-left">
+      <span id="conn-dot" class="dot"></span>
+      <span id="pair-tag">--</span>
+    </div>
+    <div class="hdr-right">
+      <button id="btn-font" class="mini" title="字号">A</button>
+      <button id="btn-clear" class="mini" title="清空列表">清</button>
+      <button id="btn-disconnect" class="mini" title="断开">断</button>
+    </div>
+  </header>
+
+  <div id="empty" class="empty">等待游戏聊天…<br><span>电脑端开始翻译后，字幕会实时出现在这里</span></div>
+  <div id="subtitle-list"></div>
+
+  <!-- 底部操作栏 -->
+  <div id="bar">
+    <input id="manual-input" type="text" placeholder="手动输入要翻译的话（可选）">
+    <button id="btn-send-manual" class="primary small">翻译</button>
+    <button id="btn-sync-clip" class="mini wide">同步剪贴板</button>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

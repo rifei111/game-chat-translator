@@ -1,0 +1,14 @@
+# ===== 必需 =====
+lingua-language-detector==2.2.0   # 本地语种识别
+websockets==15.0.1                # 中继 / 双端通信
+pyperclip==1.9.0                  # 双向剪贴板
+mss==9.0.2                        # 屏幕截图
+rapidocr-onnxruntime>=1.3.0       # 屏幕文字 OCR（多语种，内置 ONNX 模型）
+Pillow>=10.0.0                    # 图像处理
+numpy>=1.24                       # OCR 输入
+qrcode>=7.4                       # 终端二维码（手机扫码进页面）
+requests>=2.31                    # 在线翻译
+
+# ===== 可选：本地离线翻译 =====
+# 装上也仍需首次联网下载语言包（每个语言对约 100MB），可完全离线使用
+# argostranslate>=1.9.0
