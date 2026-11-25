@@ -12,6 +12,7 @@ import logging
 from .config import Config
 from .pipeline import Pipeline
 from .overlay import try_start_overlay
+from .paths import config_path
 
 
 def main():
@@ -23,7 +24,7 @@ def main():
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)-7s %(message)s",
                         datefmt="%H:%M:%S")
-    cfg = Config.load()
+    cfg = Config.load(config_path())
     cfg.ensure_pair()
     if args.demo:
         cfg.ocr_source = "demo"

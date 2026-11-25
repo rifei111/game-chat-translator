@@ -23,6 +23,7 @@ sys.path.insert(0, ROOT)
 from pc.config import Config, get_lan_ip          # noqa: E402
 from pc.pipeline import Pipeline                   # noqa: E402
 from pc.overlay import try_start_overlay           # noqa: E402
+from pc.paths import resource_path, config_path    # noqa: E402
 from relay.server import serve as relay_serve       # noqa: E402
 
 
@@ -66,7 +67,7 @@ def _free_port(start: int, tries: int = 20) -> int:
 
 
 def _start_phone_server(cfg: Config):
-    phone_dir = os.path.join(ROOT, "phone")
+    phone_dir = resource_path("phone")
     handler = functools.partial(SimpleHTTPRequestHandler, directory=phone_dir)
     handler.log_message = lambda *a, **k: None  # 静音访问日志
 
@@ -104,7 +105,8 @@ def main():
         datefmt="%H:%M:%S",
     )
 
-    cfg = Config.load(args.config)
+    cfg_file = args.config if os.path.isabs(args.config) else config_path(args.config)
+    cfg = Config.load(cfg_file)
     cfg.ensure_pair()
     if args.demo:
         cfg.ocr_source = "demo"
@@ -114,7 +116,7 @@ def main():
     # 先定端口（占用自动顺延），再生成配置和二维码，保证印出来的地址可用
     cfg.relay_port = _free_port(cfg.relay_port)
     cfg.phone_port = _free_port(cfg.phone_port)
-    cfg.save(args.config)
+    cfg.save(cfg_file)
 
     _start_phone_server(cfg)
     overlay = try_start_overlay(cfg)

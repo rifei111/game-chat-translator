@@ -10,6 +10,7 @@ let ws = null;
 let pair = "";
 let autoScroll = true;
 let fontSize = 17;
+let deferredInstall = null;
 
 /* ---------- 工具 ---------- */
 function toast(msg, ms = 1800) {
@@ -28,21 +29,86 @@ function hhmm(ts) {
 
 async function copyText(text) {
   if (!text) return;
+  // 安卓 WebView 壳：优先走原生剪贴板桥接
+  if (window.GTBridge && typeof GTBridge.copyText === "function") {
+    GTBridge.copyText(text);
+    return;
+  }
   try {
     await navigator.clipboard.writeText(text);
     toast("已复制");
   } catch {
-    // 回退：临时 textarea
     const ta = document.createElement("textarea");
     ta.value = text;
     ta.style.position = "fixed";
     ta.style.opacity = "0";
     document.body.appendChild(ta);
+    ta.focus();
     ta.select();
     try { document.execCommand("copy"); toast("已复制"); }
     catch { toast("复制失败，请长按选择"); }
     ta.remove();
   }
+}
+
+/* ---------- 粒子背景 ---------- */
+function startParticles() {
+  const canvas = $("particles");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W, H, parts = [];
+
+  function resize() {
+    W = canvas.width = innerWidth * devicePixelRatio;
+    H = canvas.height = innerHeight * devicePixelRatio;
+    canvas.style.width = innerWidth + "px";
+    canvas.style.height = innerHeight + "px";
+  }
+  resize();
+  addEventListener("resize", resize);
+
+  const N = reduced ? 0 : Math.min(28, Math.floor(innerWidth / 18));
+  function spawn(init) {
+    return {
+      x: Math.random() * W,
+      y: init ? Math.random() * H : H + 10,
+      r: (Math.random() * 2.2 + 1.1) * devicePixelRatio,
+      vy: (Math.random() * 0.35 + 0.15) * devicePixelRatio,
+      vx: (Math.random() - 0.5) * 0.15 * devicePixelRatio,
+      a: Math.random() * 0.35 + 0.12,
+      hue: Math.random() > 0.5 ? "0,113,227" : "255,255,255",
+      sway: Math.random() * Math.PI * 2,
+    };
+  }
+  for (let i = 0; i < N; i++) parts.push(spawn(true));
+
+  let raf = 0;
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of parts) {
+      p.sway += 0.01;
+      p.y -= p.vy;
+      p.x += p.vx + Math.sin(p.sway) * 0.2 * devicePixelRatio;
+      if (p.y < -10) Object.assign(p, spawn(false));
+      if (p.x < -10) p.x = W + 10;
+      if (p.x > W + 10) p.x = -10;
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3);
+      grad.addColorStop(0, `rgba(${p.hue},${p.a})`);
+      grad.addColorStop(1, `rgba(${p.hue},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  if (!reduced) tick();
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else if (!reduced) tick();
+  });
 }
 
 /* ---------- 渲染 ---------- */
@@ -53,7 +119,6 @@ function renderSubtitle(msg) {
   const row = document.createElement("div");
   row.className = "row" + (msg.retry ? " retry" : "");
 
-  // 顶部：语种 + 时间
   const meta = document.createElement("div");
   meta.className = "meta";
   const badge = document.createElement("span");
@@ -65,17 +130,14 @@ function renderSubtitle(msg) {
   time.textContent = hhmm(msg.ts) + (msg.retry ? " · 重译" : "");
   meta.append(badge, time);
 
-  // 原文
   const src = document.createElement("div");
   src.className = "src";
   src.textContent = msg.src || "";
 
-  // 译文
   const trans = document.createElement("div");
   trans.className = "trans";
   trans.textContent = msg.trans || "";
 
-  // 操作
   const acts = document.createElement("div");
   acts.className = "acts";
   const bCopy = document.createElement("button");
@@ -96,6 +158,7 @@ function renderSubtitle(msg) {
   row.append(meta, src, trans, acts);
   list.appendChild(row);
 
+  while (list.children.length > 200) list.firstChild.remove();
   if (autoScroll) list.scrollTop = list.scrollHeight;
 }
 
@@ -138,7 +201,6 @@ function connect() {
         renderSubtitle(msg);
         break;
       case "clipboard":
-        // PC 复制的文字 → 手机剪贴板 + 提示
         navigator.clipboard?.writeText(msg.text || "").catch(() => {});
         toast("收到电脑剪贴板：" + (msg.text || "").slice(0, 24));
         break;
@@ -210,8 +272,34 @@ $("subtitle-list").addEventListener("scroll", () => {
   autoScroll = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
 });
 
+/* ---------- PWA：安装到主屏幕 ---------- */
+function setupInstall() {
+  const btn = $("btn-install");
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstall = e;
+    btn.classList.remove("hidden");
+  });
+  btn.onclick = async () => {
+    if (!deferredInstall) {
+      toast("用浏览器菜单选择「添加到主屏幕」");
+      return;
+    }
+    deferredInstall.prompt();
+    await deferredInstall.userChoice;
+    deferredInstall = null;
+    btn.classList.add("hidden");
+  };
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+}
+
 /* ---------- 初始化（URL 参数自动填充） ---------- */
 (function init() {
+  startParticles();
+  setupInstall();
+
   const fs = localStorage.getItem("gt_fs");
   if (fs) {
     fontSize = +fs;
@@ -225,7 +313,6 @@ $("subtitle-list").addEventListener("scroll", () => {
   if (relay) $("relay-url").value = relay;
   if (code) $("pair-code").value = code;
 
-  // 扫码进来（带 relay 参数）自动连接
   if (p.get("relay") && code) {
     setTimeout(connect, 300);
   } else if (relay && code) {
