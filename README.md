@@ -8,9 +8,25 @@
 
 ![桌面字幕条](docs/screenshot-overlay.png)
 
-## 下载 Windows 便携版
+## 下载 Windows 版
 
-[下载 LinguaStudio-portable.zip](https://github.com/rifei111/game-chat-translator/releases/download/v1.0.0-desktop/LinguaStudio-portable.zip)（约 409 MiB，直接解压运行，不需要分卷合并）
+### 单文件 exe（推荐）
+
+[下载 LinguaStudio.exe](https://github.com/rifei111/game-chat-translator/releases/download/v1.0.0-desktop/LinguaStudio.exe)（约 407 MiB）
+
+双击运行，不需要解压，不需要 `_internal` 文件夹，也不需要终端。首次启动会在 exe 同目录生成 `data/`（配置、模型、WebView 缓存）。
+
+SHA256：
+
+```
+94E08D3D4951DEB6AD01674F6A0C43BBC5BE2E30707E96718AF8E945D3D7BF9D
+```
+
+### 便携文件夹
+
+[下载 LinguaStudio-portable.zip](https://github.com/rifei111/game-chat-translator/releases/download/v1.0.0-desktop/LinguaStudio-portable.zip)（约 409 MiB）
+
+解压后双击 `LinguaStudio.exe`；适合希望启动更快的场景，启动时不需要解包。
 
 SHA256：
 
