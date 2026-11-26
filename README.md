@@ -26,6 +26,7 @@
 
 - **绿色版（免安装）**：在 Windows 上运行一次 `build_installer.bat`，产物在 `dist\GameTranslator\`，整个文件夹拷走即可，双击 `GameTranslator.exe` 启动。
 - **单文件安装程序**：装好 [Inno Setup 6](https://jrsoftware.org/isdl.php) 后再运行 `build_installer.bat`，会生成 `GameTranslator-Setup-0.2.0.exe`，下一步下一步安装。
+- **单文件安装程序（免管理员）**：没装 Inno Setup 也没关系，装好 [NSIS 3](https://nsis.sourceforge.io/) 后先 `python -m PyInstaller GameTranslator.spec --noconfirm`，再运行 `build_installer_nsis.bat`，同样生成 `dist\GameTranslator-Setup-0.2.0.exe`；安装到 `%LOCALAPPDATA%\Programs\GameTranslator`，全程不需要管理员权限。
 
 > 安装程序 / 绿色版需要在 **Windows 本机**打包（PyInstaller 不支持跨平台编译）。仓库里的源码在 Linux/macOS 上只能跑开发模式。
 
