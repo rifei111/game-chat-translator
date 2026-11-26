@@ -8,6 +8,22 @@
 
 ![桌面字幕条](docs/screenshot-overlay.png)
 
+## 下载 Windows 便携版
+
+便携包约 409 MiB，由于当前网络无法直传 GitHub Release 二进制资源，已拆成 7 个分卷放在独立分支：
+
+- **一次下载全部分卷（推荐）**：[portable-assets 分支归档](https://github.com/rifei111/game-chat-translator/archive/refs/heads/portable-assets.zip)
+- 或浏览分卷目录：[portable-assets/portable](https://github.com/rifei111/game-chat-translator/tree/portable-assets/portable)
+- 版本说明：[v1.0.0-desktop](https://github.com/rifei111/game-chat-translator/releases/tag/v1.0.0-desktop)
+
+下载归档后解压，进入 `portable/`，双击 `assemble.bat` 合并出 `LinguaStudio-portable.zip`，再解压并双击 `LinguaStudio.exe`。
+
+合并后的 SHA256：
+
+```
+A078E061491848AE4D63CC212D1670A862A51C5F4BF8E1BD14CE9E08F0960381
+```
+
 ## 直接打开
 
 - Windows 10/11，需要 **Edge WebView2 Runtime**（Windows 11 通常已内置）。
