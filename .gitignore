@@ -23,3 +23,10 @@ android/app/build/
 android/build/
 *.apk
 *.aab
+
+# Lingua Studio
+dist/
+build/
+data/models/
+data/webview/
+*.zip

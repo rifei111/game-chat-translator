@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <!-- 本应用只在同一 WiFi 内直连 PC（ws:// 局域网地址），放开明文流量 -->
-    <base-config cleartextTrafficPermitted="true" />
-</network-security-config>

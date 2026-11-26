@@ -1,15 +1,14 @@
-"""PC 端配置：局域网模式，自动探测本机 IP，首次运行生成 config.json。"""
+"""Lingua Studio 配置：局域网中继、OCR、翻译、语音识别与界面偏好。"""
 from __future__ import annotations
 
 import json
 import os
 import secrets
 import socket
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
 
 
 def get_lan_ip() -> str:
-    """探测本机局域网 IPv4（手机端要填的地址）。"""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0.5)
@@ -21,38 +20,93 @@ def get_lan_ip() -> str:
         return "127.0.0.1"
 
 
+TARGET_LANGS = {
+    "zh": "简体中文",
+    "en": "English",
+    "ja": "日本語",
+    "ko": "한국어",
+    "ru": "Русский",
+    "de": "Deutsch",
+    "fr": "Français",
+    "es": "Español",
+    "pt": "Português",
+    "ar": "العربية",
+    "tr": "Türkçe",
+    "vi": "Tiếng Việt",
+    "th": "ไทย",
+}
+
+OCR_LANGS = {
+    "auto": {"label": "自动多语", "hint": "中 / 日 / 英 / 欧洲语言", "engine": "PP-OCRv6 multi"},
+    "ch": {"label": "中文 + 英文", "hint": "默认高精度", "engine": "PP-OCRv6 multi"},
+    "japan": {"label": "日语", "hint": "かな / 汉字", "engine": "PP-OCRv4 japan"},
+    "korean": {"label": "韩语", "hint": "한국어", "engine": "PP-OCRv4 korean"},
+    "cyrillic": {"label": "俄语 / 西里尔", "hint": "Русский", "engine": "PP-OCRv4 cyrillic"},
+    "latin": {"label": "欧洲语言", "hint": "DE / FR / ES / PT", "engine": "PP-OCRv4 latin"},
+    "arabic": {"label": "阿拉伯语", "hint": "العربية", "engine": "PP-OCRv4 arabic"},
+}
+
+ASR_MODELS = {
+    "tiny": {"label": "Tiny", "size": "约 75 MB", "hint": "最快，准确率一般"},
+    "base": {"label": "Base", "size": "约 145 MB", "hint": "均衡，推荐"},
+    "small": {"label": "Small", "size": "约 484 MB", "hint": "更准，CPU 稍慢"},
+}
+
+
 @dataclass
 class Config:
-    # 中继 / 手机端服务（局域网，无需公网）
+    # 中继 / 手机端（纯局域网）
     relay_host: str = "0.0.0.0"
     relay_port: int = 8780
     phone_port: int = 8781
-
-    # 配对：PC 与手机必须一致，留空则自动生成
     pair: str = ""
 
     # 翻译
     target_lang: str = "zh"
-    translator: str = "mock"      # mock | argos | deepl | qwen
+    translator: str = "free"      # mock | free | argos | deepl | qwen
     deepl_key: str = ""
     qwen_key: str = ""
 
     # OCR
-    ocr_source: str = "screen"    # screen | demo
-    region: list = field(default_factory=lambda: [80, 480, 620, 200])
+    ocr_source: str = "demo"      # demo | screen
+    region: list = field(default_factory=lambda: [80, 900, 900, 320])
+    ocr_lang: str = "auto"
     ocr_min_score: float = 0.62
-    ocr_line_gap: int = 14        # 同一行的 y 容差（像素）
+    ocr_line_gap: int = 14
     min_text_len: int = 2
 
     # 流水线
-    poll_interval: float = 1.5    # 抓取间隔（秒）
-    dedup_window: float = 8.0     # 相同文本忽略窗口（秒）
+    poll_interval: float = 1.5
+    dedup_window: float = 8.0
+    show_same_language: bool = False
 
-    # 字幕覆盖层
+    # PC 字幕条
     overlay: bool = True
-    overlay_height: int = 110
-    overlay_font: int = 22
+    overlay_height: int = 118
+    overlay_font: int = 23
+    overlay_radius: int = 26
     subtitle_ttl: float = 8.0
+    overlay_opacity: float = 0.88
+
+    # 剪贴板 / 手机
+    clipboard_sync: bool = True
+
+    # 语音识别（Whisper）
+    asr_model: str = "base"
+    asr_device_id: str = ""
+    asr_device_name: str = "系统声音（扬声器回环）"
+    asr_language: str = ""        # 空 = 自动
+    asr_chunk: float = 5.0
+    asr_translate: bool = True
+
+    # 界面
+    theme: str = "dark"
+    accent: str = "blue"
+    particles: bool = True
+    particle_density: int = 70
+    reduce_motion: bool = False
+    window_width: int = 1340
+    window_height: int = 860
 
     # ---- 便捷方法 ----
     def ensure_pair(self) -> str:
@@ -70,9 +124,30 @@ class Config:
         return (f"http://{ip}:{self.phone_port}/"
                 f"?relay=ws://{ip}:{self.relay_port}&pair={self.pair}")
 
+    def normalize(self):
+        self.relay_port = int(self.relay_port)
+        self.phone_port = int(self.phone_port)
+        if self.ocr_lang not in OCR_LANGS:
+            self.ocr_lang = "auto"
+        if self.asr_model not in ASR_MODELS:
+            self.asr_model = "base"
+        self.poll_interval = max(0.5, min(10.0, float(self.poll_interval)))
+        self.dedup_window = max(1.0, min(120.0, float(self.dedup_window)))
+        self.asr_chunk = max(2.0, min(15.0, float(self.asr_chunk)))
+        self.overlay_font = max(14, min(48, int(self.overlay_font)))
+        self.overlay_height = max(64, min(260, int(self.overlay_height)))
+        self.overlay_radius = max(8, min(40, int(self.overlay_radius)))
+        self.overlay_opacity = max(0.3, min(1.0, float(self.overlay_opacity)))
+        self.particle_density = max(0, min(200, int(self.particle_density)))
+        self.ocr_min_score = max(0.2, min(0.99, float(self.ocr_min_score)))
+        if len(self.region or []) != 4:
+            self.region = [80, 900, 900, 320]
+        self.region = [int(v) for v in self.region]
+        return self
+
     # ---- 读写 ----
     @classmethod
-    def load(cls, path: str = "config.json") -> "Config":
+    def load(cls, path: str) -> "Config":
         data = {}
         if os.path.exists(path):
             try:
@@ -82,10 +157,13 @@ class Config:
                 data = {}
         allowed = {k: v for k, v in data.items() if k in cls.__dataclass_fields__}
         cfg = cls(**allowed)
-        if "region" in allowed:
-            cfg.region = list(cfg.region)
-        return cfg
+        return cfg.normalize()
 
-    def save(self, path: str = "config.json"):
+    def save(self, path: str):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(asdict(self), f, ensure_ascii=False, indent=2)
+
+    def public(self) -> dict:
+        """给前端的配置副本（API key 返回，方便本地编辑；日志中不打印）。"""
+        return asdict(self)

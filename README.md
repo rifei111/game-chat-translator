@@ -1,238 +1,112 @@
-# 外服游戏实时翻译（局域网版）
+# Lingua Studio
 
-外服游戏里外国人说的话 → PC 端截屏 OCR → 本地语种识别 → 翻译 → **PC 置顶字幕条** + **手机 App / 网页字幕流**，双向剪贴板同步。全部在同一个 WiFi 内跑通，**不需要公网、不需要云服务器、不需要 VPN**。
+> 外服游戏聊天实时翻译的桌面工作台。截屏 OCR、语音转文字、翻译、置顶字幕条、手机接力、双向剪贴板，全部在一个 Apple 风格的原生窗口里完成。
 
-<p align="center">
-  <img src="docs/phone-subtitles.png" width="300" alt="手机端实时字幕">
-  <img src="docs/phone-join.png" width="300" alt="手机端连接页">
-</p>
+| 概览 | 语音识别 |
+| --- | --- |
+| ![概览](docs/screenshot-overview.png) | ![语音识别](docs/screenshot-voice.png) |
 
----
+![桌面字幕条](docs/screenshot-overlay.png)
 
-## 一、下载与安装
+## 直接打开
 
-### 安卓手机（推荐）
+- Windows 10/11，需要 **Edge WebView2 Runtime**（Windows 11 通常已内置）。
+- 开发版：双击 `run.bat`（使用同目录上一级的 `.venv-studio`，无终端窗口）。
+- 打包版：双击 `LinguaStudio.exe`。
+- 也可以命令行运行：`.venv-studio\Scripts\python.exe app.py`（会输出日志，适合排查问题）。
 
-1. 打开本仓库 **Releases**，下载 `GameTranslator-v0.2.0-debug.apk`
-2. 手机允许「安装未知来源应用」后安装
-3. 打开 App，填入 PC 终端上显示的中继地址和配对码即可
+首次启动需要一点时间初始化本地模型索引。右侧的状态灯从 `IDLE` 变成 `RUNNING` 就绪。
 
-> 没有上架应用商店；APK 为 debug 签名，首次安装时系统会提示风险，确认即可。
-> 不想装 App 也可以：手机浏览器打开 PC 给的网址，菜单里选「添加到主屏幕」，效果等同安装（PWA）。
+### 便携版安装
 
-### Windows PC
+1. 把 `LinguaStudio-portable.zip` 解压到任意目录（建议路径不含中文、空格）。
+2. **不要单独移动 `LinguaStudio.exe`**，它必须和同目录的 `_internal` 文件夹一起使用。
+3. 双击 `LinguaStudio.exe` 即可。首次启动会创建 `data/`，配置、日志、OCR/Whisper 模型都放在这里。
+4. 若系统缺少 WebView2，装一次微软的 [Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)；Windows 11 与较新的 Windows 10 一般已自带。
+5. 首次使用语音识别，在“语音识别”页选择设备并点“检查模型 / 准备模型”，`base` 模型约 141 MB，只下载一次。
 
-两种方式任选：
+便携包约 810 MB（含 WebView2 绑定、ONNX Runtime、OpenCV、RapidOCR 与语种识别运行时），压缩包会小一些；这是离线 OCR + 本地 Whisper 的完整运行时体积，不是安装器缓存。
 
-- **绿色版（免安装）**：在 Windows 上运行一次 `build_installer.bat`，产物在 `dist\GameTranslator\`，整个文件夹拷走即可，双击 `GameTranslator.exe` 启动。
-- **单文件安装程序**：装好 [Inno Setup 6](https://jrsoftware.org/isdl.php) 后再运行 `build_installer.bat`，会生成 `GameTranslator-Setup-0.2.0.exe`，下一步下一步安装。
+## 八个页面
 
-> 安装程序 / 绿色版需要在 **Windows 本机**打包（PyInstaller 不支持跨平台编译）。仓库里的源码在 Linux/macOS 上只能跑开发模式。
+| 页面 | 能做什么 |
+| --- | --- |
+| **概览** | 一键启动/停止、能量球实时波形、翻译统计、字幕流、三步引导 |
+| **实时字幕** | 全部/屏幕/语音/手动筛选，字幕卡、字幕条预览、字号/停留/透明度/圆角、手动输入一句话 |
+| **语音识别** | 系统声音回环或麦克风、Whisper base、语言、分段长度、自动翻译、电平表、本地转写列表 |
+| **屏幕识别** | 全屏截图圈选游戏聊天区域、区域预览、OCR 置信度/行距/语言、演示模式、识别框叠加 |
+| **手机接力** | 二维码、配对码、中继地址、双向剪贴板；手机与电脑同一个 WiFi 即可 |
+| **翻译引擎** | 免费在线（MyMemory）、通义千问、DeepL、Argos 离线、演示模式；目标语言网格；翻译试验场 |
+| **外观与字幕** | 深空黑 / 晨光主题、强调色、粒子密度、减弱动效、字幕条参数、数据目录、日志导出 |
+| **关于** | 版本、设计原则、隐私与合规说明 |
 
----
+右上角 `⌘K`（Windows 上也可用 `Ctrl+K`）打开命令面板；`Esc` 关闭。
 
-## 二、快速使用（源码模式）
+## 翻译与识别链路
 
-### 1. 装依赖（只需一次）
-双击 **`install.bat`**，或手动：
-```bat
-python -m pip install -r requirements.txt
+1. **屏幕**：`mss` 截取圈选区域 → RapidOCR 多语种识别 → 置信度/去重过滤 → 语种识别 → 翻译 → 字幕流 + 置顶条 + 手机。
+2. **语音**：`SoundCard` 采集系统回环或麦克风 → `faster-whisper` 本地转写 → 同一翻译流水线。音频不离开本机。
+3. **手机**：本机 WebSocket 中继（默认 `8780`）+ 静态 PWA（默认 `8781`），只走局域网；手机可看字幕、重译、同步剪贴板。
+4. **字幕条**：Win32 分层窗口，每像素透明、鼠标穿透、置顶、圆角玻璃、滑入淡出，不会挡住游戏操作。
+
+## 配置
+
+所有配置都在应用内改，立即保存到 `data/config.json`：
+
+- 翻译：`translator`（`free` / `qwen` / `deepl` / `argos` / `mock`）、`target_lang`
+- 屏幕：`ocr_source`（`screen` / `demo`）、`region`、`ocr_lang`、`ocr_min_score`、`ocr_line_gap`、`poll_interval`、`dedup_window`
+- 语音：`asr_model`、`asr_device_id`、`asr_language`、`asr_chunk`、`asr_translate`
+- 字幕条：`overlay`、`overlay_height`、`overlay_font`、`overlay_radius`、`subtitle_ttl`、`overlay_opacity`
+- 手机：`pair`、`relay_port`、`phone_port`
+- 外观：`theme`、`accent`、`particles`、`particle_density`、`reduce_motion`
+
+免费在线翻译不需要 Key；通义千问/DeepL 在对应页面填入自己的 Key 后点“应用引擎”。Argos 为完全离线引擎，首次使用会下载语言包。
+
+## 模型
+
+- OCR：RapidOCR 自带中/英/日/欧洲语模型；韩/俄/阿拉伯等语言首次按需下载 10–20 MB。
+- 语音：Whisper `base` 约 141 MB，首次下载走 `hf-mirror.com`；也可在语音页切换 `tiny` / `small`。
+- 模型放在 `data/models`，可以整个目录备份或迁移。
+
+## 隐私与合规
+
+- 只截取屏幕像素，不读取游戏内存、不注入进程、不修改游戏文件。
+- 语音识别完全在本机完成；音频不会上传。
+- 在线翻译会把**当前要翻译的文本**发给对应服务商。敏感场景请切换到 Argos 离线引擎。
+- 手机中继只在局域网内转发，不落库；断开即失效。
+- 请遵守游戏与翻译服务商的条款。
+
+## 开发 / 打包
+
+```powershell
+# 依赖
+.venv-studio\Scripts\python.exe -m pip install -r requirements.txt
+
+# 启动（有日志）
+.venv-studio\Scripts\python.exe app.py
+
+# 可选：PyInstaller 便携包（构建脚本见 tools\build_portable.ps1）
+powershell -ExecutionPolicy Bypass -File tools\build_portable.ps1
 ```
 
-### 2. 圈选游戏聊天区域（只需一次，换游戏再圈）
-1. 先把游戏切到窗口化 / 无边框窗口，让聊天框可见
-2. 双击 **`select_region.bat`**，屏幕变暗后**拖拽框住聊天框**，回车确认
-   - 取消按 `Esc`
-   - 没图形界面时，直接改 `config.json` 的 `region: [x, y, 宽, 高]`
-
-### 3. 启动
-双击 **`start.bat`**。终端会打印：
+项目结构：
 
 ```
-========================================================
-  游戏聊天实时翻译  ·  局域网模式
-========================================================
-  配对码      : 3F8A2C
-  翻译引擎    : mock   目标语言: zh
-  OCR 来源    : screen   区域: [80, 480, 620, 200]
-  中继地址    : ws://192.168.1.7:8780
-  手机端地址  : http://192.168.1.7:8781/
-========================================================
-  [二维码]
-  手机扫码直接打开（需与电脑同一 WiFi）
-========================================================
+app.py              pywebview 入口
+ui/                 Apple 风格界面（HTML/CSS/JS）
+pc/api.py           JS ↔ Python 桥
+pc/runtime.py       服务生命周期
+pc/pipeline.py      OCR / 翻译 / 字幕流水线
+pc/asr.py           Whisper 语音转文字
+pc/overlay.py       Win32 置顶字幕条
+pc/phone_server.py  手机 PWA
+relay/server.py     局域网 WebSocket 中继
+phone/              手机端页面
+lid/                语种识别
 ```
 
-手机连**同一个 WiFi**，扫码（或手动打开那个地址 / 装 APK 填地址），自动填好中继地址和配对码并连接。
+## 设计说明
 
----
+界面采用 macOS / Apple 官网的视觉语言：`#f5f5f7` / `#1d1d1f` / `#0071e3`、18–28px 圆角、玻璃材质、弹簧曲线 `cubic-bezier(.22,1,.36,1)`、粒子与鼠标光晕、磁吸按钮、3D 卡片倾斜、能量球波形。它是 Windows 桌面应用，不是 macOS 安装包；这里的“Apple 风格”指设计语言与动效，不包含 Apple 系统本身。
 
-## 三、配置 `config.json`
-
-首次启动自动生成，改完重启生效。打包后的 exe 配置放在 **exe 同级目录**，不在安装目录里。
-
-| 字段 | 默认 | 说明 |
-|---|---|---|
-| `pair` | 自动生成 | 配对码；想固定就自己写 6 位字母数字 |
-| `translator` | `mock` | **改成 `argos` / `deepl` / `qwen` 才会真的翻译** |
-| `deepl_key` | 空 | DeepL API Key（免费版以 `:fx` 结尾自动走 free 域名） |
-| `qwen_key` | 空 | 阿里云百炼 API Key（qwen-turbo，OpenAI 兼容协议） |
-| `target_lang` | `zh` | 目标语言 |
-| `ocr_source` | `screen` | `screen` 真实截图；`demo` 内置样例（验证链路用） |
-| `region` | `[80,480,620,200]` | 聊天框圈选区域 `[x, y, w, h]` |
-| `poll_interval` | `1.5` | 截图间隔（秒）；越小越实时，越吃 CPU |
-| `dedup_window` | `8.0` | 同一句话多少秒内不重复推送（防聊天框重绘刷屏） |
-| `overlay` | `true` | PC 字幕条开关；觉得挡画面就设 `false` |
-| `overlay_font` | `22` | 字幕字号 |
-| `subtitle_ttl` | `8.0` | 字幕停留秒数 |
-| `relay_port` / `phone_port` | `8780` / `8781` | 被占用会自动顺延并在终端提示 |
-
-### 选哪个翻译引擎
-
-| 引擎 | 联网 | 花钱 | 质量 | 适合 |
-|---|---|---|---|---|
-| `argos` | 仅首次下模型 | 免费 | 中等 | 想完全离线、不想给 API 付费 |
-| `deepl` | 是 | 按量计费（有免费额度） | 最好 | 追求翻译质量 |
-| `qwen` | 是 | 按量计费（很便宜） | 好 | 国内网络稳定、支持小语种上下文 |
-| `mock` | 否 | 免费 | 只加前缀不翻译 | 只想验证链路是否通 |
-
-> `argos` 首次使用会后台下载语言包（每个语言对约 100MB，只在第一次），下载期间该语种先显示原文，装好自动生效，不会卡住流水线。
-
----
-
-## 四、手机端
-
-### 两种形态
-
-- **APK（本仓库 Releases 提供）**：原生壳 + WebView，本地打包网页资源，桌面有图标，全屏启动。
-- **PWA 网页**：浏览器打开后「添加到主屏幕」，带图标、启动屏、离线缓存，功能与 APK 一致。
-
-### 功能
-
-- 每行字幕：语种徽章（EN/JA/KO/RU/DE/FR/ES/PT 等）+ 时间
-- **复制译文** / **复制原文** / **重译**（重译把原文发回 PC 重新翻译）
-- 底部：手动输入一句话点「翻译」（不必等 OCR 抓）
-- 「同步剪贴板」：把手机剪贴板内容发到 PC
-- 字号切换、清空列表、断开连接；记住上次的地址和配对码
-- 背景有低饱和漂浮粒子，跟随系统「减弱动态效果」自动关闭
-
-### 自己编译安卓 APK
-
-`android/` 是完整 Gradle 工程（AGP 7.4.2 / minSdk 24 / 纯 Java，无 Kotlin、无 androidx 依赖）：
-
-```bash
-# 需要 Android SDK（platforms;android-33、build-tools;33.0.2）+ JDK 11
-cd android
-gradle assembleDebug
-# 产物：app/build/outputs/apk/debug/app-debug.apk
-```
-
-改了 `phone/` 网页后，重新编译前先把 `phone/` 同步到 `android/app/src/main/assets/phone/`（仓库里已随源码保持同步）。
-
----
-
-## 五、目录结构
-
-```
-game-translator/
-├── entry.py               PyInstaller 入口
-├── GameTranslator.spec    PyInstaller 打包配置
-├── installer.iss          Inno Setup 安装程序脚本
-├── build_installer.bat    一键打包（绿色版 + 安装程序）
-├── start.bat / install.bat / select_region.bat
-├── requirements.txt
-├── relay/server.py        WebSocket 中继（配对码房间，只转发不落库）
-├── lid/                   本地语种识别（lingua）
-├── pc/
-│   ├── launch.py          一键启动：中继 + 流水线 + 手机服务 + 二维码
-│   ├── paths.py           打包后资源 / 可写路径适配
-│   ├── config.py          配置 + 局域网 IP 探测
-│   ├── ocr.py             截图 + RapidOCR + 行合并
-│   ├── translator.py      mock / argos / deepl / qwen
-│   ├── pipeline.py        去重 → 识别 → 翻译 → 推送
-│   ├── clip.py            剪贴板读写 + 防回环
-│   ├── relay_client.py    中继客户端（自动重连）
-│   ├── overlay.py         tkinter 置顶字幕条（鼠标穿透）
-│   └── select_region.py   拖拽圈选区域
-├── phone/                 手机端网页（PWA：HTML / CSS / JS / 图标 / SW）
-├── android/               安卓 WebView 壳工程
-├── docs/                  截图
-└── examples/              语种识别 / 中继自检脚本
-```
-
----
-
-## 六、消息协议
-
-| type | 方向 | 字段 |
-|---|---|---|
-| `hello` | C→S | `pair`, `role: pc/phone` |
-| `paired` | S→C | `pair`, `peers` |
-| `subtitle` | PC→手机 | `ts`, `lang`, `conf`, `src`, `trans`, `retry?`, `engine` |
-| `clipboard` | 双向 | `text`, `from` |
-| `translate_request` | 手机→PC | `src`, `lang`（重译/手动输入） |
-| `status_request` / `status` | 手机↔PC | OCR 行数、已推送条数、引擎名 |
-
----
-
-## 七、实现细节
-
-1. **只截屏，不读内存**：OCR 只对屏幕像素做识别，不注入游戏进程、不改游戏文件，主流反作弊（VAC/EAC/ACE）不会因此封号。
-2. **视觉行合并**：OCR 输出的是一块块文本框，按 y 坐标容差 14px 聚成"一行"，行内按 x 排序拼接，避免同一行被拆成两段推送。
-3. **去重靠归一化文本**：去掉标点/空格/大小写后做哈希，8 秒窗口内相同内容不重复推，解决聊天框滚动重绘导致的重复。
-4. **语种判定兜底**：置信度 < 0.55（短文本 < 0.70）判 `unknown`；纯拉丁字母且 ≥3 字符按英文处理；`ok`/`gg` 这类 ≤3 字符的判不出语种直接丢弃，不刷字幕。
-5. **argos 不阻塞**：模型下载放后台线程，`translate()` 只读已安装的包，缺包时返回空串，上层保留原文，下一条自动生效。
-6. **字幕条鼠标穿透**：Windows 下给窗口加 `WS_EX_LAYERED | WS_EX_TRANSPARENT`，点击直接落到下面的游戏。
-7. **剪贴板防回环**：记住刚写入的远端内容，轮询遇到它就跳过，不会 PC→手机→PC 无限循环。
-8. **端口占用自动顺延**：8780/8781 被占了自动换下一个，二维码和打印的地址用最终端口，不会给你印一个打不开的地址。
-
----
-
-## 八、已验证 / 未验证
-
-**已实测通过**
-- 语种识别：15 条多语种聊天样例判定正确（ja/ko/ru/de/fr/es/pt/tr/ar/zh/en），短词兜底与噪声过滤生效
-- OCR：RapidOCR 对合成聊天截图识别准确（置信度 0.98~0.99），三行文本按 y 合并正确
-- 中继：PC↔手机双向字幕与剪贴板路由通过
-- PC 流水线：demo 源 → 识别 → 翻译 → 推送，连续输出多语种字幕无异常
-- 手机端：真实浏览器连上中继后实时收到字幕，徽章/复制/重译/底部栏渲染正常
-- 安卓 APK：Gradle 编译通过，`com.rifei.gt` / 入口 Activity / 本地网页资源 / 权限清单已校验，MainActivity 与剪贴板桥接类已进 dex
-
-**未在本机验证（需真机）**
-- APK 真机安装后 WebView 加载 `file://` 资源、`ws://` 局域网连接、剪贴板桥接的实际表现（无安卓模拟器/设备）
-- 屏幕截图 OCR 的真实游戏画面效果（本机无显示器，`mss` 截图不可用；逻辑已用合成图验证）
-- PC 字幕条的窗口置顶与鼠标穿透（tkinter 需要可见桌面）
-- DeepL / 千问真实调用（本机网络到这两个域名被拦，代码为官方标准协议，填 key 即可）
-- Windows 单文件安装程序（PyInstaller / Inno Setup 需在 Windows 上执行；脚本与配置已就绪）
-
----
-
-## 九、常见问题
-
-**手机 / APK 连不上**
-1. 确认手机和电脑同一个 WiFi（不要一个连 5G 一个连 2.4G 不同网段，也不要电脑插网线到别的路由）
-2. 电脑 IP 变了？重新看终端打印的地址
-3. Windows 防火墙入站放行 8780/8781（仅限专用网络）
-4. 公司/学校 WiFi 开了"AP 隔离"，设备互访被拦，换手机热点试
-
-**识别不到文字**
-1. 游戏必须窗口化 / 无边框，全屏独占模式下截图可能黑屏
-2. 重新 `select_region.bat` 圈一次，框要完全覆盖聊天文字
-3. 文字太小/太糊：游戏内把聊天字号调大，或把 `ocr_min_score` 降到 0.5
-
-**字幕刷得太快 / 重复**
-- 调大 `dedup_window`（如 15 秒）
-- 调大 `poll_interval`（如 2.5 秒）
-
-**字幕条挡视线**
-- `overlay: false` 关掉，只看手机
-- 或调小 `overlay_height` / `overlay_font`
-
----
-
-## 十、合规提醒
-
-- 仅做屏幕截图识别，**不读游戏内存、不注入进程、不改游戏文件**。
-- 部分游戏用户协议禁止第三方覆盖层，字幕条可随时用 `overlay: false` 关闭。
-- 在线翻译会把聊天文本发到对应服务商，敏感场景请用 `argos` 本地翻译。
-- 仅限个人使用，不要用于商业化分发或批量采集他人聊天内容。
+原项目：[rifei111/game-chat-translator](https://github.com/rifei111/game-chat-translator)（MIT）。本仓库是它的桌面化重构。

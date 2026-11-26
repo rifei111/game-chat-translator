@@ -8,6 +8,7 @@ from typing import Dict, Set
 
 import websockets
 from websockets.asyncio.server import ServerConnection
+from websockets.exceptions import ConnectionClosed
 
 log = logging.getLogger("relay")
 
@@ -72,6 +73,8 @@ async def handle(ws: ServerConnection):
 
             msg.setdefault("from", role)
             await _broadcast(pair, ws, msg)
+    except ConnectionClosed:
+        pass
     finally:
         if pair:
             await _broadcast(pair, ws, {"type": "peer_left", "role": role})
