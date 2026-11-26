@@ -14,7 +14,7 @@ datas, binaries, hidden = [], [], []
 
 # OCR 模型 / onnxruntime 原生库 / lingua 编译扩展，整包收集
 for pkg in ["rapidocr_onnxruntime", "onnxruntime", "lingua"]:
-    d, h, b = collect_all(pkg)
+    d, b, h = collect_all(pkg)  # collect_all -> (datas, binaries, hiddenimports)
     datas += d
     hidden += h
     binaries += b
@@ -41,6 +41,7 @@ a = Analysis(
 pyz = PYZ(a.pure)
 
 exe = EXE(
+    pyz,
     a.scripts,
     [],
     exclude_binaries=True,
