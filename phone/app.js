@@ -11,6 +11,8 @@ let pair = "";
 let autoScroll = true;
 let fontSize = 17;
 let deferredInstall = null;
+let displayMode = "both";
+let lastSub = null;
 
 /* ---------- 工具 ---------- */
 function toast(msg, ms = 1800) {
@@ -49,6 +51,105 @@ async function copyText(text) {
     catch { toast("复制失败，请长按选择"); }
     ta.remove();
   }
+}
+
+/* ---------- 扫码配对 ---------- */
+function applyPairPayload(raw) {
+  const text = (raw || "").trim();
+  let relay = "";
+  let code = "";
+  try {
+    const u = new URL(text, location.href);
+    relay = u.searchParams.get("relay") || "";
+    code = u.searchParams.get("pair") || "";
+  } catch (_) {}
+  if (!relay || !code) {
+    const m = text.match(/relay=([^&\s]+).*?pair=([^&\s]+)/i);
+    if (m) {
+      relay = decodeURIComponent(m[1]);
+      code = decodeURIComponent(m[2]);
+    }
+  }
+  if (!relay || !code) {
+    toast("二维码里没有配对信息");
+    return false;
+  }
+  $("relay-url").value = relay;
+  $("pair-code").value = code.toUpperCase();
+  history.replaceState(null, "", location.pathname +
+    "?relay=" + encodeURIComponent(relay) + "&pair=" + encodeURIComponent(code));
+  $("join-status").textContent = "已识别二维码，正在连接…";
+  setTimeout(connect, 180);
+  return true;
+}
+
+async function decodeQrImage(file) {
+  const bitmap = await createImageBitmap(file);
+  const maxSide = 1600;
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+
+  if (window.jsQR) {
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const hit = jsQR(data.data, data.width, data.height, {
+      inversionAttempts: "attemptBoth",
+    });
+    if (hit?.data) return hit.data;
+  }
+  // 部分浏览器自带条码识别；失败时回退到 jsQR 的库解码。
+  if ("BarcodeDetector" in window) {
+    try {
+      const detector = new BarcodeDetector({ formats: ["qr_code"] });
+      const codes = await detector.detect(canvas);
+      if (codes.length && codes[0].rawValue) return codes[0].rawValue;
+    } catch (_) {}
+  }
+  return "";
+}
+
+async function scanQrFile(file) {
+  if (!file) return;
+  try {
+    $("join-status").textContent = "正在识别二维码…";
+    const text = await decodeQrImage(file);
+    if (!text) {
+      $("join-status").textContent = "没识别到二维码，请靠近一点重拍";
+      return;
+    }
+    applyPairPayload(text);
+  } catch (e) {
+    $("join-status").textContent = "读取图片失败：" + (e.message || "未知错误");
+  }
+}
+
+/* ---------- 字幕模式 ---------- */
+function setDisplayMode(mode) {
+  displayMode = mode === "phone" ? "phone" : "both";
+  $("chat")?.classList.toggle("phone-mode", displayMode === "phone");
+  $("modeBanner")?.classList.toggle("hidden", displayMode !== "phone");
+  if (displayMode !== "phone") {
+    $("live")?.classList.add("hidden");
+  } else if (lastSub) {
+    updateLive(lastSub);
+  }
+}
+
+function updateLive(msg) {
+  const live = $("live");
+  if (!live || displayMode !== "phone") return;
+  const badge = $("liveBadge");
+  const lang = msg.lang || "unknown";
+  badge.textContent = "LIVE";
+  badge.className = "badge live";
+  $("liveTime").textContent = (LANG_LABEL[lang] || lang.toUpperCase()) + " · " + hhmm(msg.ts);
+  $("liveTrans").textContent = msg.trans || msg.src || "";
+  $("liveSrc").textContent = msg.src || "";
+  live.classList.remove("hidden");
 }
 
 /* ---------- 粒子背景 ---------- */
@@ -113,6 +214,8 @@ function startParticles() {
 
 /* ---------- 渲染 ---------- */
 function renderSubtitle(msg) {
+  lastSub = msg;
+  updateLive(msg);
   $("empty").classList.add("hidden");
   const list = $("subtitle-list");
 
@@ -191,14 +294,23 @@ function connect() {
         pair = msg.pair;
         $("pair-tag").textContent = "配对 " + pair;
         setConn(true);
+        setDisplayMode(msg.display_mode || displayMode);
         $("join").classList.add("hidden");
         $("chat").classList.remove("hidden");
         localStorage.setItem("gt_relay", $("relay-url").value.trim());
         localStorage.setItem("gt_pair", code);
         toast("已连接电脑");
+        // 拉一次完整状态，确保在独占全屏中重连时立刻切到手机字幕。
+        setTimeout(() => {
+          if (ws?.readyState === 1) ws.send(JSON.stringify({ type: "status_request" }));
+        }, 120);
         break;
       case "subtitle":
         renderSubtitle(msg);
+        break;
+      case "display_mode":
+        setDisplayMode(msg.mode);
+        if (msg.mode === "phone") toast("已切换到手机字幕模式");
         break;
       case "clipboard":
         navigator.clipboard?.writeText(msg.text || "").catch(() => {});
@@ -206,10 +318,12 @@ function connect() {
         break;
       case "peer_left":
         setConn(false);
+        setDisplayMode("both");
         toast("电脑端已断开");
         break;
       case "status":
-        toast(`引擎 ${msg.engine || "-"} · 已推 ${msg.pushed || 0} 条`);
+        if (msg.display_mode) setDisplayMode(msg.display_mode);
+        // 状态每 2 秒一次，静默更新，不弹 toast，避免打断手机字幕。
         break;
       case "error":
         $("join-status").textContent = msg.msg || "错误";
@@ -223,6 +337,44 @@ function connect() {
 /* ---------- 交互 ---------- */
 $("btn-join").onclick = connect;
 
+$("btn-scan").onclick = () => {
+  // 局域网页面是 HTTP，浏览器通常不给 live camera；用系统相机拍照后本地解码，
+  // 不需要把图片上传到任何服务器。
+  if (window.GTBridge && typeof GTBridge.scanQRCode === "function") {
+    try {
+      GTBridge.scanQRCode();
+      return;
+    } catch (_) {}
+  }
+  $("qr-file").click();
+};
+
+/* 安卓原生壳：相机拍完把照片以 data URL 回传，仍在本机用 jsQR 解码。 */
+window.onNativeScanImage = async (dataUrl) => {
+  try {
+    $("join-status").textContent = "正在识别二维码…";
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], "scan.jpg", { type: blob.type || "image/jpeg" });
+    await scanQrFile(file);
+  } catch (e) {
+    $("join-status").textContent = "读取照片失败：" + (e.message || "未知错误");
+  }
+};
+
+window.onNativeScanCancel = () => {
+  $("join-status").textContent = "已取消扫码";
+};
+
+window.onNativeScanError = (msg) => {
+  $("join-status").textContent = msg || "扫码失败，请重试";
+};
+
+$("qr-file").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  await scanQrFile(file);
+});
+
 $("btn-clear").onclick = () => {
   $("subtitle-list").innerHTML = "";
   $("empty").classList.remove("hidden");
@@ -231,6 +383,7 @@ $("btn-clear").onclick = () => {
 
 $("btn-disconnect").onclick = () => {
   ws?.close();
+  setDisplayMode("both");
   $("chat").classList.add("hidden");
   $("join").classList.remove("hidden");
 };

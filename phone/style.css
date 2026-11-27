@@ -93,6 +93,60 @@ button{ font-family:inherit; }
 .ghost:active{ background:rgba(0,113,227,.08); transform:scale(.97); }
 .status{ font-size:13px; color:var(--sub); min-height:18px; text-align:center; }
 
+/* 扫码入口 */
+.scan-primary{
+  display:flex; align-items:center; justify-content:center; gap:9px;
+  width:100%; padding:14px 16px; border:1px solid rgba(0,113,227,.28);
+  border-radius:15px; background:rgba(0,113,227,.08); color:var(--accent);
+  font-size:15px; font-weight:650; cursor:pointer;
+  transition:transform .18s var(--spring), background .2s;
+}
+.scan-primary svg{ stroke:currentColor; stroke-width:1.7; }
+.scan-primary:active{ transform:scale(.97); background:rgba(0,113,227,.14); }
+.scan-hint{ margin-top:-6px; font-size:11px; color:var(--sub); line-height:1.5; text-align:center; }
+.or{ display:flex; align-items:center; gap:12px; color:#aeaeb2; font-size:11px; }
+.or::before,.or::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+/* ---------- 独占全屏 / 手机字幕 ---------- */
+.mode-banner{
+  display:flex; align-items:center; gap:11px;
+  margin:10px 14px 0; padding:11px 14px;
+  border:1px solid rgba(255,159,10,.28);
+  border-radius:15px; background:rgba(255,159,10,.10);
+  animation:rowIn .35s var(--spring);
+}
+.mode-pulse{
+  width:8px; height:8px; flex:0 0 auto; border-radius:50%;
+  background:#ff9f0a; box-shadow:0 0 0 0 rgba(255,159,10,.45);
+  animation:pulse 1.8s infinite;
+}
+@keyframes pulse{
+  0%{ box-shadow:0 0 0 0 rgba(255,159,10,.42); }
+  70%{ box-shadow:0 0 0 7px rgba(255,159,10,0); }
+  100%{ box-shadow:0 0 0 0 rgba(255,159,10,0); }
+}
+.mode-banner div{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.mode-banner strong{ font-size:13px; color:#a35d00; }
+.mode-banner span{ font-size:11px; color:#9a6a2e; line-height:1.45; }
+
+.live-card{
+  margin:10px 14px 0; padding:15px 16px 16px;
+  border-radius:18px; border:1px solid rgba(0,113,227,.18);
+  background:rgba(255,255,255,.9);
+  box-shadow:0 8px 24px rgba(0,0,0,.07);
+  animation:rowIn .3s var(--spring);
+}
+.live-card .live-meta{ display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+.live-card .live-trans{
+  font-size:calc(var(--fs) + 5px); line-height:1.45; font-weight:650;
+  letter-spacing:.1px; word-break:break-word;
+}
+.live-card .live-src{
+  margin-top:7px; font-size:12px; line-height:1.5; color:var(--sub);
+  word-break:break-word;
+}
+.phone-mode #subtitle-list{ padding-top:10px; }
+
 /* ---------- 字幕页 ---------- */
 #chat{ display:flex; flex-direction:column; height:100dvh; }
 header{
@@ -189,3 +243,16 @@ header{
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
 }
+
+/* 窄屏连接页防横向溢出 */
+#join{width:100%;min-width:0;}
+#join .join-card{min-width:0;}
+#join .sub{max-width:100%;}
+#join input{min-width:0;}
+
+/* polish: phone live */
+.mode-banner{background:rgba(255,159,10,.16);border-color:rgba(255,159,10,.4);}
+.mode-banner strong{color:#7a4600;}
+.mode-banner span{color:#805b2b;}
+.live-card{background:#fff;border-color:rgba(0,113,227,.16);}
+.badge.live{background:rgba(255,59,48,.1);color:#ff3b30;letter-spacing:.08em;}

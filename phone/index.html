@@ -28,7 +28,20 @@
       </svg>
     </div>
     <h1>游戏字幕翻译</h1>
-    <p class="sub">电脑和手机连同一个 WiFi，用电脑上显示的地址打开本页</p>
+    <p class="sub">电脑和手机连同一个 WiFi。扫电脑上的二维码，或手动填写地址</p>
+
+    <button id="btn-scan" class="scan-primary" type="button">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <path d="M14 14h3v3h-3zM19 19h2v2h-2z"/>
+      </svg>
+      扫码连接
+    </button>
+    <p class="scan-hint">用相机拍下电脑端「手机接力」里的二维码，自动识别地址和配对码</p>
+    <div class="or"><span>或手动输入</span></div>
+    <input id="qr-file" type="file" accept="image/*" capture="environment" hidden>
 
     <label>中继地址
       <input id="relay-url" type="text" inputmode="url" autocomplete="off" placeholder="ws://192.168.1.5:8780">
@@ -56,6 +69,20 @@
     </div>
   </header>
 
+  <div id="modeBanner" class="mode-banner hidden">
+    <span class="mode-pulse"></span>
+    <div>
+      <strong>独占全屏 · 手机字幕</strong>
+      <span>PC 字幕条被游戏挡住，译文持续推送到这里</span>
+    </div>
+  </div>
+
+  <div id="live" class="live-card hidden">
+    <div class="live-meta"><span id="liveBadge" class="badge">LIVE</span><span id="liveTime" class="time">--:--</span></div>
+    <div id="liveTrans" class="live-trans"></div>
+    <div id="liveSrc" class="live-src"></div>
+  </div>
+
   <div id="empty" class="empty">
     <div class="empty-icon">
       <svg viewBox="0 0 64 64" width="56" height="56" fill="none" aria-hidden="true">
@@ -81,6 +108,7 @@
   <div id="toast" class="toast hidden"></div>
 </div>
 
+<script src="vendor/jsQR.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

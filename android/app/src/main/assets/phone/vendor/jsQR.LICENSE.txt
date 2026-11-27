@@ -1,0 +1,4 @@
+jsQR v1.4.0
+Copyright (c) 2017 Cosmo Wolfe
+MIT License
+https://github.com/cozmo/jsQR

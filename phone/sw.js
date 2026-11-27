@@ -1,10 +1,11 @@
 /* 离线缓存：核心资源优先缓存，失败回退网络。 */
-const CACHE = "gt-translator-v1";
+const CACHE = "gt-translator-v2";
 const CORE = [
   "./",
   "./index.html",
   "./style.css",
   "./app.js",
+  "./vendor/jsQR.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
