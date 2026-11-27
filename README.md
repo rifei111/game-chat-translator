@@ -38,15 +38,15 @@ A078E061491848AE4D63CC212D1670A862A51C5F4BF8E1BD14CE9E08F0960381
 
 ## 下载安卓手机版
 
-[下载 LinguaStudio-Mobile-v1.0.0.apk](https://github.com/rifei111/game-chat-translator/releases/download/v1.0.0-mobile/LinguaStudio-Mobile-v1.0.0.apk)（约 1.5 MB）
+[下载 LinguaStudio-Mobile-v1.0.1.apk](https://github.com/rifei111/game-chat-translator/releases/download/v1.0.1-mobile/LinguaStudio-Mobile-v1.0.1.apk)（约 1.5 MB）
 
-安装到安卓手机后，打开 App，点「扫码连接」拍下电脑「手机接力」页上的二维码，即可自动填入中继地址和配对码。
+安装到安卓手机后，打开 App，点「实时扫码连接」，把电脑「手机接力」页上的二维码放入实时取景框，即可自动填入中继地址和配对码。
 
 - 需要手机与电脑在同一个 WiFi。
 - 游戏进入独占全屏时，电脑字幕条会自动隐藏，手机自动切到大字号「独占全屏 · 手机字幕」。
 - 退出独占全屏后，电脑字幕条自动恢复。
 - APK 使用测试签名，首次安装需允许「安装未知来源应用」。
-- 手机端不会上传相机照片；二维码在手机本地解码。
+- App 内使用相机实时预览连续识别，不拍照、不经过相册，也不上传画面。
 
 ## 直接打开
 

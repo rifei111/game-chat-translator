@@ -338,27 +338,22 @@ function connect() {
 $("btn-join").onclick = connect;
 
 $("btn-scan").onclick = () => {
-  // 局域网页面是 HTTP，浏览器通常不给 live camera；用系统相机拍照后本地解码，
-  // 不需要把图片上传到任何服务器。
+  // 安卓 App 通过原生桥打开实时相机；网页端没有原生桥时只提示手动输入。
   if (window.GTBridge && typeof GTBridge.scanQRCode === "function") {
     try {
       GTBridge.scanQRCode();
       return;
     } catch (_) {}
   }
-  $("qr-file").click();
+  $("join-status").textContent = "实时扫码请在安卓 App 内使用；网页版请手动填写地址和配对码";
 };
 
-/* 安卓原生壳：相机拍完把照片以 data URL 回传，仍在本机用 jsQR 解码。 */
-window.onNativeScanImage = async (dataUrl) => {
-  try {
-    $("join-status").textContent = "正在识别二维码…";
-    const blob = await (await fetch(dataUrl)).blob();
-    const file = new File([blob], "scan.jpg", { type: blob.type || "image/jpeg" });
-    await scanQrFile(file);
-  } catch (e) {
-    $("join-status").textContent = "读取照片失败：" + (e.message || "未知错误");
+window.onNativeScanText = (text) => {
+  if (!text) {
+    $("join-status").textContent = "没有识别到配对二维码";
+    return;
   }
+  applyPairPayload(text);
 };
 
 window.onNativeScanCancel = () => {
@@ -368,12 +363,6 @@ window.onNativeScanCancel = () => {
 window.onNativeScanError = (msg) => {
   $("join-status").textContent = msg || "扫码失败，请重试";
 };
-
-$("qr-file").addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  e.target.value = "";
-  await scanQrFile(file);
-});
 
 $("btn-clear").onclick = () => {
   $("subtitle-list").innerHTML = "";
